@@ -5,8 +5,9 @@ import {
   IsString,
   MaxLength,
   MinLength,
-  Matches,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsPassword } from '../../../common/validators/is-password.validator';
 
 export class RegisterDto {
   @ApiProperty({
@@ -14,6 +15,7 @@ export class RegisterDto {
     description: 'The full name of the user',
   })
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
@@ -24,6 +26,7 @@ export class RegisterDto {
     description: 'A valid and unique email address',
   })
   @IsEmail()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
   @IsNotEmpty()
   email!: string;
 
@@ -34,11 +37,6 @@ export class RegisterDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(64)
-  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message:
-      'password must contain uppercase, lowercase, number and special character, and must not contain spaces',
-  })
+  @IsPassword()
   password!: string;
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { BookingsRepository } from './bookings.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
@@ -6,6 +6,11 @@ import { BookingQueryDto } from './dto/booking-query.dto';
 import { BookingResponseDto } from './dto/booking-response.dto';
 import { BookingStatus, Prisma } from '@prisma/client';
 import { ServicesService } from '../services/services.service';
+import { BookingAlreadyExistsException } from '../../common/exceptions/booking-already-exists.exception';
+import { InactiveServiceException } from '../../common/exceptions/inactive-service.exception';
+import { BookingDateValidator } from './validators/booking-date.validator';
+import { BookingStatusValidator } from './validators/booking-status.validator';
+import { CompletedBookingException } from '../../common/exceptions/completed-booking.exception';
 
 @Injectable()
 export class BookingsService {
@@ -23,23 +28,16 @@ export class BookingsService {
 
     // Rule 2: Inactive services cannot be booked.
     if (!service.isActive) {
-      throw new ConflictException('Cannot book an inactive service.');
+      throw new InactiveServiceException();
     }
 
     // Rule 3: Booking date cannot be in the past.
-    // Parse as YYYY-MM-DD
-    const bookingDate = new Date(dto.bookingDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-
-    if (bookingDate < today) {
-      throw new BadRequestException('Booking date cannot be in the past.');
-    }
+    const bookingDate = BookingDateValidator.validateFutureOrToday(dto.bookingDate);
 
     // Rule 5: Prevent duplicate bookings.
     const duplicate = await this.bookingsRepository.findDuplicateBooking(dto.serviceId, bookingDate, dto.bookingTime);
     if (duplicate) {
-      throw new ConflictException('A booking already exists for this service at the specified date and time.');
+      throw new BookingAlreadyExistsException();
     }
 
     const data: Prisma.BookingCreateInput = {
@@ -92,33 +90,11 @@ export class BookingsService {
       throw new NotFoundException('Booking not found');
     }
 
-    // Rule 6 & 7: Status transition validations
-    const currentStatus = booking.status;
-    const newStatus = dto.status;
+    // Rule 6 & 7 & 8: Status transition validations
+    BookingStatusValidator.validate(booking.status, dto.status);
 
-    if (currentStatus === BookingStatus.COMPLETED) {
-      throw new ConflictException('Completed bookings cannot be modified.');
-    }
-
-    if (currentStatus === BookingStatus.CANCELLED && newStatus === BookingStatus.COMPLETED) {
-      throw new ConflictException('Cancelled bookings cannot become completed.');
-    }
-
-    // Explicitly validate all valid flows
-    // PENDING -> CONFIRMED, PENDING -> CANCELLED, CONFIRMED -> COMPLETED, CONFIRMED -> CANCELLED
-    const validTransitions: Record<BookingStatus, BookingStatus[]> = {
-      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
-      [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
-      [BookingStatus.CANCELLED]: [],
-      [BookingStatus.COMPLETED]: [],
-    };
-
-    if (currentStatus !== newStatus && !validTransitions[currentStatus].includes(newStatus)) {
-      throw new ConflictException(`Invalid status transition from ${currentStatus} to ${newStatus}`);
-    }
-
-    const updatedBooking = await this.bookingsRepository.updateStatus(id, newStatus);
-    this.logger.log(`Booking ${id} status updated to ${newStatus}`);
+    const updatedBooking = await this.bookingsRepository.updateStatus(id, dto.status);
+    this.logger.log(`Booking ${id} status updated to ${dto.status}`);
     return new BookingResponseDto(updatedBooking);
   }
 
@@ -129,7 +105,7 @@ export class BookingsService {
     }
 
     if (booking.status === BookingStatus.COMPLETED) {
-      throw new ConflictException('Completed bookings cannot be cancelled.');
+      throw new CompletedBookingException();
     }
 
     if (booking.status === BookingStatus.CANCELLED) {

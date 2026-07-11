@@ -1,5 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
+import { InactiveServiceException } from '../../../common/exceptions/inactive-service.exception';
+import { BookingAlreadyExistsException } from '../../../common/exceptions/booking-already-exists.exception';
+import { InvalidBookingDateException } from '../../../common/exceptions/invalid-booking-date.exception';
+import { InvalidStatusTransitionException } from '../../../common/exceptions/invalid-status-transition.exception';
+import { CompletedBookingException } from '../../../common/exceptions/completed-booking.exception';
+import { CancelledBookingException } from '../../../common/exceptions/cancelled-booking.exception';
 import { BookingsService } from '../bookings.service';
 import { BookingsRepository } from '../bookings.repository';
 import { ServicesService } from '../../services/services.service';
@@ -79,21 +85,21 @@ describe('BookingsService', () => {
       await expect(service.createBooking(dto)).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ConflictException if service is inactive', async () => {
+    it('should throw InactiveServiceException if service is inactive', async () => {
       jest.spyOn(servicesService, 'getService').mockResolvedValue({ ...mockServiceData, isActive: false } as any);
-      await expect(service.createBooking(dto)).rejects.toThrow(ConflictException);
+      await expect(service.createBooking(dto)).rejects.toThrow(InactiveServiceException);
     });
 
-    it('should throw BadRequestException if booking date is in the past', async () => {
+    it('should throw InvalidBookingDateException if booking date is in the past', async () => {
       jest.spyOn(servicesService, 'getService').mockResolvedValue(mockServiceData as any);
-      await expect(service.createBooking({ ...dto, bookingDate: '2000-01-01' })).rejects.toThrow(BadRequestException);
+      await expect(service.createBooking({ ...dto, bookingDate: '2000-01-01' })).rejects.toThrow(InvalidBookingDateException);
     });
 
-    it('should throw ConflictException if duplicate booking exists', async () => {
+    it('should throw BookingAlreadyExistsException if duplicate booking exists', async () => {
       jest.spyOn(servicesService, 'getService').mockResolvedValue(mockServiceData as any);
       jest.spyOn(repository, 'findDuplicateBooking').mockResolvedValue(mockBooking as any);
       
-      await expect(service.createBooking(dto)).rejects.toThrow(ConflictException);
+      await expect(service.createBooking(dto)).rejects.toThrow(BookingAlreadyExistsException);
     });
 
     it('should create and return booking on success', async () => {
@@ -113,20 +119,20 @@ describe('BookingsService', () => {
       await expect(service.updateStatus('1', { status: BookingStatus.CONFIRMED })).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ConflictException if booking is already COMPLETED', async () => {
+    it('should throw CompletedBookingException if booking is already COMPLETED', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue({ ...mockBooking, status: BookingStatus.COMPLETED } as any);
-      await expect(service.updateStatus('1', { status: BookingStatus.PENDING })).rejects.toThrow(ConflictException);
+      await expect(service.updateStatus('1', { status: BookingStatus.PENDING })).rejects.toThrow(CompletedBookingException);
     });
 
-    it('should throw ConflictException if trying to complete a CANCELLED booking', async () => {
+    it('should throw CancelledBookingException if trying to complete a CANCELLED booking', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue({ ...mockBooking, status: BookingStatus.CANCELLED } as any);
-      await expect(service.updateStatus('1', { status: BookingStatus.COMPLETED })).rejects.toThrow(ConflictException);
+      await expect(service.updateStatus('1', { status: BookingStatus.COMPLETED })).rejects.toThrow(CancelledBookingException);
     });
 
-    it('should throw ConflictException for invalid arbitrary transitions', async () => {
+    it('should throw InvalidStatusTransitionException for invalid arbitrary transitions', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue({ ...mockBooking, status: BookingStatus.PENDING } as any);
       // PENDING -> COMPLETED is invalid
-      await expect(service.updateStatus('1', { status: BookingStatus.COMPLETED })).rejects.toThrow(ConflictException);
+      await expect(service.updateStatus('1', { status: BookingStatus.COMPLETED })).rejects.toThrow(InvalidStatusTransitionException);
     });
 
     it('should update status on valid transition', async () => {
@@ -139,9 +145,9 @@ describe('BookingsService', () => {
   });
 
   describe('cancelBooking', () => {
-    it('should throw ConflictException if booking is COMPLETED', async () => {
+    it('should throw CompletedBookingException if booking is COMPLETED', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue({ ...mockBooking, status: BookingStatus.COMPLETED } as any);
-      await expect(service.cancelBooking('1')).rejects.toThrow(ConflictException);
+      await expect(service.cancelBooking('1')).rejects.toThrow(CompletedBookingException);
     });
 
     it('should return already CANCELLED booking without updating', async () => {

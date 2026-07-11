@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateServiceDto {
   @ApiProperty({
@@ -8,6 +8,7 @@ export class CreateServiceDto {
     description: 'The title of the service',
   })
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(100)
@@ -19,6 +20,7 @@ export class CreateServiceDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   @MaxLength(500)
   description?: string;
 

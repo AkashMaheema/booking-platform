@@ -1,37 +1,27 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsEnum, IsOptional, IsString, IsUUID, IsIn } from 'class-validator';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { BookingStatus } from '@prisma/client';
 
-export class BookingQueryDto {
-  @ApiPropertyOptional({ description: 'Page number', default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: 'Items per page (max 100)', default: 10 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 10;
+export class BookingQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({ description: 'Search term for customer details' })
   @IsOptional()
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   search?: string;
 
   @ApiPropertyOptional({ description: 'Sort by field', enum: ['bookingDate', 'bookingTime', 'createdAt', 'status'], default: 'bookingDate' })
   @IsOptional()
   @IsString()
+  @IsIn(['bookingDate', 'bookingTime', 'createdAt', 'status'])
   sortBy?: 'bookingDate' | 'bookingTime' | 'createdAt' | 'status' = 'bookingDate';
 
   @ApiPropertyOptional({ description: 'Sort order', enum: ['asc', 'desc'], default: 'asc' })
   @IsOptional()
   @IsString()
+  @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc' = 'asc';
 
   @ApiPropertyOptional({ description: 'Filter by booking status', enum: BookingStatus })

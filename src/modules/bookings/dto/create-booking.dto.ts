@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsPhone } from '../../../common/validators/is-phone.validator';
+import { IsTime } from '../../../common/validators/is-time.validator';
 
 export class CreateBookingDto {
   @ApiProperty({
@@ -7,6 +10,7 @@ export class CreateBookingDto {
     description: 'The full name of the customer',
   })
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
@@ -17,6 +21,7 @@ export class CreateBookingDto {
     description: 'The email of the customer',
   })
   @IsEmail()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
   @IsNotEmpty()
   customerEmail!: string;
 
@@ -26,9 +31,7 @@ export class CreateBookingDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\+?[1-9]\d{1,14}$/, {
-    message: 'customerPhone must be a valid international phone number',
-  })
+  @IsPhone()
   customerPhone!: string;
 
   @ApiProperty({
@@ -56,9 +59,7 @@ export class CreateBookingDto {
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'bookingTime must be in HH:mm 24-hour format',
-  })
+  @IsTime()
   bookingTime!: string;
 
   @ApiPropertyOptional({
@@ -67,6 +68,7 @@ export class CreateBookingDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
   @MaxLength(1000)
   notes?: string;
 }
