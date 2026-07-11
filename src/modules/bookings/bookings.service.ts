@@ -11,6 +11,7 @@ import { InactiveServiceException } from '../../common/exceptions/inactive-servi
 import { BookingDateValidator } from './validators/booking-date.validator';
 import { BookingStatusValidator } from './validators/booking-status.validator';
 import { CompletedBookingException } from '../../common/exceptions/completed-booking.exception';
+import { AuditService, AuditAction } from '../../common/logging/audit.service';
 
 @Injectable()
 export class BookingsService {
@@ -19,6 +20,7 @@ export class BookingsService {
   constructor(
     private readonly bookingsRepository: BookingsRepository,
     private readonly servicesService: ServicesService,
+    private readonly auditService: AuditService,
   ) {}
 
   async createBooking(dto: CreateBookingDto): Promise<BookingResponseDto> {
@@ -54,6 +56,14 @@ export class BookingsService {
 
     const newBooking = await this.bookingsRepository.create(data);
     this.logger.log(`Created booking with id ${newBooking.id}`);
+
+    this.auditService.log({
+      action: AuditAction.BOOKING_CREATED,
+      resource: 'Booking',
+      resourceId: newBooking.id,
+      details: { serviceId: dto.serviceId, date: bookingDate },
+    });
+
     return new BookingResponseDto(newBooking);
   }
 
@@ -95,6 +105,20 @@ export class BookingsService {
 
     const updatedBooking = await this.bookingsRepository.updateStatus(id, dto.status);
     this.logger.log(`Booking ${id} status updated to ${dto.status}`);
+
+    let auditAction = AuditAction.BOOKING_CREATED; // fallback
+    if (dto.status === BookingStatus.CONFIRMED) auditAction = AuditAction.BOOKING_CONFIRMED;
+    else if (dto.status === BookingStatus.COMPLETED) auditAction = AuditAction.BOOKING_COMPLETED;
+    else if (dto.status === BookingStatus.CANCELLED) auditAction = AuditAction.BOOKING_CANCELLED;
+
+    if (auditAction !== AuditAction.BOOKING_CREATED) {
+      this.auditService.log({
+        action: auditAction,
+        resource: 'Booking',
+        resourceId: updatedBooking.id,
+      });
+    }
+
     return new BookingResponseDto(updatedBooking);
   }
 
@@ -114,6 +138,13 @@ export class BookingsService {
 
     const cancelledBooking = await this.bookingsRepository.cancel(id);
     this.logger.log(`Booking ${id} was cancelled`);
+
+    this.auditService.log({
+      action: AuditAction.BOOKING_CANCELLED,
+      resource: 'Booking',
+      resourceId: id,
+    });
+
     return new BookingResponseDto(cancelledBooking);
   }
 }

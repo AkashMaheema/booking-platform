@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { RequestWithId } from '../middleware/request-id.middleware';
 
 /**
  * Catches Prisma-specific errors and maps them to appropriate HTTP responses.
@@ -29,7 +30,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
   ): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithId>();
 
     const { status, message } = this.mapException(exception);
 
@@ -42,6 +43,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       errors: [],
       timestamp: new Date().toISOString(),
       path: request.url,
+      requestId: request.id,
     });
   }
 

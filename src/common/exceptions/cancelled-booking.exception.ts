@@ -1,7 +1,8 @@
-import { ConflictException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { BaseBusinessException } from './base-business.exception';
 
-export class CancelledBookingException extends ConflictException {
-  constructor() {
-    super('Cancelled bookings cannot become completed.');
+export class CancelledBookingException extends BaseBusinessException {
+  constructor(message: string = 'CancelledBooking error') {
+    super(message, 'CANCELLED_BOOKING_ERR', HttpStatus.CONFLICT);
   }
 }

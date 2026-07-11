@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users.service';
 import { UsersRepository } from '../users.repository';
 import { Role } from '@prisma/client';
+import { AuditService } from '../../../common/logging/audit.service';
 
 jest.mock('bcrypt');
 
@@ -36,6 +37,12 @@ describe('UsersService', () => {
             deactivate: jest.fn(),
             deleteRefreshTokens: jest.fn(),
             findAll: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
           },
         },
       ],

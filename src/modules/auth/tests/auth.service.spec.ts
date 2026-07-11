@@ -5,6 +5,7 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
 import { AuthRepository } from '../auth.repository';
+import { AuditService } from '../../../common/logging/audit.service';
 
 // Mock bcrypt
 jest.mock('bcrypt');
@@ -61,6 +62,12 @@ describe('AuthService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn().mockReturnValue('secret'),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
           },
         },
       ],

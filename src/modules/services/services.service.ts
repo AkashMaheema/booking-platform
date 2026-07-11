@@ -5,12 +5,16 @@ import { UpdateServiceDto } from './dto/update-service.dto';
 import { ServiceQueryDto } from './dto/service-query.dto';
 import { ServiceResponseDto } from './dto/service-response.dto';
 import { Prisma } from '@prisma/client';
+import { AuditService, AuditAction } from '../../common/logging/audit.service';
 
 @Injectable()
 export class ServicesService {
   private readonly logger = new Logger(ServicesService.name);
 
-  constructor(private readonly servicesRepository: ServicesRepository) {}
+  constructor(
+    private readonly servicesRepository: ServicesRepository,
+    private readonly auditService: AuditService,
+  ) {}
 
   async createService(dto: CreateServiceDto): Promise<ServiceResponseDto> {
     const existingService = await this.servicesRepository.findByTitle(dto.title);
@@ -28,6 +32,14 @@ export class ServicesService {
 
     const newService = await this.servicesRepository.create(data);
     this.logger.log(`Created service with id ${newService.id}`);
+
+    this.auditService.log({
+      action: AuditAction.SERVICE_CREATED,
+      resource: 'Service',
+      resourceId: newService.id,
+      details: { title: newService.title },
+    });
+
     return new ServiceResponseDto(newService);
   }
 
@@ -77,6 +89,14 @@ export class ServicesService {
 
     const updatedService = await this.servicesRepository.update(id, updateData);
     this.logger.log(`Updated service with id ${updatedService.id}`);
+
+    this.auditService.log({
+      action: AuditAction.SERVICE_UPDATED,
+      resource: 'Service',
+      resourceId: updatedService.id,
+      details: { title: updatedService.title },
+    });
+
     return new ServiceResponseDto(updatedService);
   }
 
@@ -93,5 +113,11 @@ export class ServicesService {
 
     await this.servicesRepository.delete(id);
     this.logger.log(`Deleted service with id ${id}`);
+
+    this.auditService.log({
+      action: AuditAction.SERVICE_DELETED,
+      resource: 'Service',
+      resourceId: id,
+    });
   }
 }

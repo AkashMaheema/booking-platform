@@ -1,15 +1,26 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Booking, BookingStatus, Service } from '@prisma/client';
 
 export class BookingResponseDto {
+  @ApiProperty({ example: 'uuid-1234', description: 'The unique identifier of the booking' })
   id!: string;
+  @ApiProperty({ example: 'John Doe', description: 'The full name of the customer' })
   customerName!: string;
+  @ApiProperty({ example: 'john@example.com', description: 'The email of the customer' })
   customerEmail!: string;
+  @ApiProperty({ example: '+60123456789', description: 'The phone number of the customer' })
   customerPhone!: string;
+  @ApiProperty({ description: 'The subset of the booked service', required: false })
   service!: any;
+  @ApiProperty({ example: '2026-08-20', description: 'The date of the booking in ISO format (YYYY-MM-DD)' })
   bookingDate!: string;
+  @ApiProperty({ example: '14:00', description: 'The time of the booking in HH:mm format' })
   bookingTime!: string;
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.PENDING, description: 'The current status of the booking' })
   status!: BookingStatus;
+  @ApiProperty({ example: 'Please arrive early.', description: 'Optional notes for the booking', required: false, nullable: true })
   notes!: string | null;
+  @ApiProperty({ example: '2026-07-11T12:00:00Z', description: 'Creation timestamp' })
   createdAt!: Date;
 
   constructor(booking: Booking & { service?: Service }) {

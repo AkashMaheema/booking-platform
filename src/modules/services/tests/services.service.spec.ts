@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { ServicesService } from '../services.service';
 import { ServicesRepository } from '../services.repository';
+import { AuditService } from '../../../common/logging/audit.service';
 
 describe('ServicesService', () => {
   let service: ServicesService;
@@ -32,6 +33,12 @@ describe('ServicesService', () => {
             delete: jest.fn(),
             findAll: jest.fn(),
             checkBookingsExist: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
           },
         },
       ],

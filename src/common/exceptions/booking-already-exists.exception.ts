@@ -1,7 +1,8 @@
-import { ConflictException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { BaseBusinessException } from './base-business.exception';
 
-export class BookingAlreadyExistsException extends ConflictException {
-  constructor() {
-    super('Selected time slot is already booked.');
+export class BookingAlreadyExistsException extends BaseBusinessException {
+  constructor(message: string = 'BookingAlreadyExists error') {
+    super(message, 'BOOKING_ALREADY_EXISTS_ERR', HttpStatus.CONFLICT);
   }
 }

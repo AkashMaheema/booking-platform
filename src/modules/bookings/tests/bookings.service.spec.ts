@@ -10,6 +10,7 @@ import { BookingsService } from '../bookings.service';
 import { BookingsRepository } from '../bookings.repository';
 import { ServicesService } from '../../services/services.service';
 import { BookingStatus } from '@prisma/client';
+import { AuditService } from '../../../common/logging/audit.service';
 
 describe('BookingsService', () => {
   let service: BookingsService;
@@ -56,6 +57,12 @@ describe('BookingsService', () => {
           provide: ServicesService,
           useValue: {
             getService: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
           },
         },
       ],

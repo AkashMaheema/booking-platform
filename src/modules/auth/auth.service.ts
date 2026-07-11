@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthRepository } from './auth.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuditService, AuditAction } from '../../common/logging/audit.service';
 import { User } from '@prisma/client';
 
 @Injectable()
@@ -20,15 +21,13 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
    * Registers a new user. Hashes password and ensures email is unique.
    */
   async register(registerDto: RegisterDto): Promise<Omit<User, 'password'>> {
-    // Duplicate Email Prevention is handled at the Database/Prisma Exception level
-    // (P2002 -> 409 Conflict) thanks to the PrismaExceptionFilter.
-    // However, the prompt specifically says: "Before creating a user: Check email. If already exists Return 409 Conflict Message: User already exists."
     const existingUser = await this.authRepository.findUserByEmail(
       registerDto.email,
     );
@@ -44,6 +43,13 @@ export class AuthService {
       email: registerDto.email,
       password: hashedPassword,
       role: 'STAFF', // Default role per design
+    });
+
+    this.auditService.log({
+      action: AuditAction.USER_REGISTERED,
+      resource: 'User',
+      resourceId: user.id,
+      details: { email: user.email },
     });
 
     const { password, ...userWithoutPassword } = user;
@@ -75,6 +81,13 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException('User account is inactive.');
     }
+
+    this.auditService.log({
+      action: AuditAction.USER_LOGGED_IN,
+      resource: 'User',
+      resourceId: user.id,
+      details: { email: user.email },
+    });
 
     return this.generateTokens(user);
   }

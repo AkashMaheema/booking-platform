@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -16,10 +16,13 @@ import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { LoggingModule } from './common/logging/logging.module';
+import { RequestContextMiddleware } from './common/logging/request-context.middleware';
+import { LoggerInterceptor } from './common/logging/logger.interceptor';
 
 @Module({
   imports: [
@@ -48,6 +51,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     // Infrastructure
     PrismaModule,
     LoggerModule,
+    LoggingModule,
 
     // Feature modules
     HealthModule,
@@ -58,21 +62,21 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
   ],
 
   providers: [
-    // Global exception filters — order matters: specific before generic
+    // Global exception filters — order matters: catch-all first, then specific
     {
       provide: APP_FILTER,
-      useClass: AllExceptionsFilter,
+      useClass: GlobalExceptionFilter,
     },
     {
       provide: APP_FILTER,
       useClass: PrismaExceptionFilter,
     },
-    {
-      provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
-    },
 
-    // Global response transform
+    // Global response transform and logging
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggerInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
@@ -85,4 +89,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestIdMiddleware, RequestContextMiddleware).forRoutes('*');
+  }
+}

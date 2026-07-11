@@ -88,6 +88,7 @@ async function bootstrap(): Promise<void> {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api/docs', app, document, {
+      jsonDocumentUrl: 'api/docs-json',
       swaggerOptions: {
         persistAuthorization: true,
         tagsSorter: 'alpha',

@@ -6,12 +6,16 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { User } from '@prisma/client';
+import { AuditService, AuditAction } from '../../common/logging/audit.service';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly auditService: AuditService,
+  ) {}
 
   async getProfile(userId: string): Promise<UserResponseDto> {
     const user = await this.usersRepository.findById(userId);
@@ -30,6 +34,14 @@ export class UsersService {
     // Since DTO restricts modification to 'name', we can just pass it
     const updatedUser = await this.usersRepository.update(userId, updateDto);
     this.logger.log(`User ${userId} updated their profile`);
+    
+    this.auditService.log({
+      action: AuditAction.USER_UPDATED,
+      resource: 'User',
+      resourceId: userId,
+      details: updateDto,
+    });
+
     return new UserResponseDto(updatedUser);
   }
 
@@ -62,6 +74,12 @@ export class UsersService {
     await this.usersRepository.deleteRefreshTokens(userId);
     
     this.logger.log(`User ${userId} changed their password and refresh tokens were revoked`);
+
+    this.auditService.log({
+      action: AuditAction.USER_PASSWORD_CHANGED,
+      resource: 'User',
+      resourceId: userId,
+    });
   }
 
   async findUser(id: string): Promise<UserResponseDto> {
@@ -93,6 +111,13 @@ export class UsersService {
 
     const updatedUser = await this.usersRepository.deactivate(id);
     this.logger.log(`Admin deactivated user ${id}`);
+
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATED,
+      resource: 'User',
+      resourceId: id,
+    });
+
     return new UserResponseDto(updatedUser);
   }
 
@@ -104,6 +129,14 @@ export class UsersService {
 
     const updatedUser = await this.usersRepository.activate(id);
     this.logger.log(`Admin activated user ${id}`);
+
+    this.auditService.log({
+      action: AuditAction.USER_UPDATED,
+      resource: 'User',
+      resourceId: id,
+      details: { activated: true },
+    });
+
     return new UserResponseDto(updatedUser);
   }
 }

@@ -25,7 +25,7 @@ export class BookingStatusValidator {
     }
 
     if (currentStatus !== newStatus && !this.validTransitions[currentStatus].includes(newStatus)) {
-      throw new InvalidStatusTransitionException(currentStatus, newStatus);
+      throw new InvalidStatusTransitionException(`Cannot transition booking from ${currentStatus} to ${newStatus}`);
     }
   }
 }

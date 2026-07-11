@@ -9,7 +9,15 @@ import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
     WinstonModule.forRootAsync({
       useFactory: () => {
         const isProduction = process.env['NODE_ENV'] === 'production';
+        const defaultLogLevel = isProduction ? 'info' : 'debug';
+        const logLevel = process.env['LOG_LEVEL']?.toLowerCase() || defaultLogLevel;
+
+        const auditFilter = winston.format((info) => {
+          return info.context === 'AuditService' ? info : false;
+        });
+
         return {
+          level: logLevel,
           transports: [
             new winston.transports.Console({
               format: isProduction
@@ -43,6 +51,15 @@ import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
                   new winston.transports.File({
                     filename: 'logs/combined.log',
                     format: winston.format.combine(
+                      winston.format.timestamp(),
+                      winston.format.json(),
+                    ),
+                  }),
+                  new winston.transports.File({
+                    filename: 'logs/audit.log',
+                    level: 'info',
+                    format: winston.format.combine(
+                      auditFilter(),
                       winston.format.timestamp(),
                       winston.format.json(),
                     ),

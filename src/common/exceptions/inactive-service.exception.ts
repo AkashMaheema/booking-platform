@@ -1,7 +1,8 @@
-import { ConflictException } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
+import { BaseBusinessException } from './base-business.exception';
 
-export class InactiveServiceException extends ConflictException {
-  constructor() {
-    super('Selected service is currently unavailable.');
+export class InactiveServiceException extends BaseBusinessException {
+  constructor(message: string = 'InactiveService error') {
+    super(message, 'INACTIVE_SERVICE_ERR', HttpStatus.CONFLICT);
   }
 }
