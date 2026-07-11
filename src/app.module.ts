@@ -11,6 +11,10 @@ import { PrismaModule } from './database/prisma.module';
 import { LoggerModule } from './logger/logger.module';
 
 import { HealthModule } from './modules/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { ServicesModule } from './modules/services/services.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
@@ -25,7 +29,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
       load: [configuration],
       validationSchema,
       validationOptions: {
-        allowUnknown: false,
+        allowUnknown: true,
         abortEarly: false,
       },
       expandVariables: true,
@@ -47,6 +51,10 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 
     // Feature modules
     HealthModule,
+    AuthModule,
+    UsersModule,
+    ServicesModule,
+    BookingsModule,
   ],
 
   providers: [

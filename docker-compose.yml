@@ -1,4 +1,3 @@
-version: '3.9'
 
 services:
   # ─── PostgreSQL Database ──────────────────────────────────────────────────
@@ -10,8 +9,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: booking_platform
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -35,6 +35,7 @@ services:
       PORT: 3000
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/booking_platform
+      # Note: app container connects to postgres service directly via Docker network (port 5432 internally)
       JWT_SECRET: dev-jwt-secret-minimum-32-characters-long
       JWT_EXPIRES_IN: 15m
       REFRESH_SECRET: dev-refresh-secret-minimum-32-characters-long
