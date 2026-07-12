@@ -8,8 +8,8 @@ export interface RequestWithId extends Request {
 
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
-  use(req: RequestWithId, res: Response, next: NextFunction) {
-    const requestId = req.headers['x-request-id']?.toString() || uuidv4();
+  use(req: RequestWithId, res: Response, next: NextFunction): void {
+    const requestId = req.headers['x-request-id']?.toString() ?? uuidv4();
     req.id = requestId;
     res.setHeader('X-Request-Id', requestId);
     next();

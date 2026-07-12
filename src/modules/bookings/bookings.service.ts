@@ -12,6 +12,7 @@ import { BookingDateValidator } from './validators/booking-date.validator';
 import { BookingStatusValidator } from './validators/booking-status.validator';
 import { CompletedBookingException } from '../../common/exceptions/completed-booking.exception';
 import { AuditService, AuditAction } from '../../common/logging/audit.service';
+import { buildPaginationMeta, PaginatedResult } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class BookingsService {
@@ -37,7 +38,11 @@ export class BookingsService {
     const bookingDate = BookingDateValidator.validateFutureOrToday(dto.bookingDate);
 
     // Rule 5: Prevent duplicate bookings.
-    const duplicate = await this.bookingsRepository.findDuplicateBooking(dto.serviceId, bookingDate, dto.bookingTime);
+    const duplicate = await this.bookingsRepository.findDuplicateBooking(
+      dto.serviceId,
+      bookingDate,
+      dto.bookingTime,
+    );
     if (duplicate) {
       throw new BookingAlreadyExistsException();
     }
@@ -67,22 +72,14 @@ export class BookingsService {
     return new BookingResponseDto(newBooking);
   }
 
-  async getBookings(query: BookingQueryDto): Promise<{ data: BookingResponseDto[]; pagination: any }> {
+  async getBookings(query: BookingQueryDto): Promise<PaginatedResult<BookingResponseDto>> {
     const { data, total } = await this.bookingsRepository.findAll(query);
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const totalPages = Math.ceil(total / limit);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
 
     return {
       data: data.map((booking) => new BookingResponseDto(booking)),
-      pagination: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrevious: page > 1,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 

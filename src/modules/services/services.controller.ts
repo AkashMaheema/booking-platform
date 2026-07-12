@@ -1,9 +1,33 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiConflictResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
+import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { ServiceQueryDto } from './dto/service-query.dto';
+import { ServiceResponseDto } from './dto/service-response.dto';
+import { PaginationMeta } from '../../common/utils/pagination.util';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -16,13 +40,39 @@ export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
   @Post()
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Create a new service (ADMIN, STAFF)' })
-  @ApiResponse({ status: 201, description: 'Service created successfully.' })
-  @ApiResponse({ status: 409, description: 'Service with this title already exists.' })
-  async createService(@Body() createDto: CreateServiceDto) {
+  @ApiCreatedResponse({
+    description: 'Service created successfully.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Service created successfully.',
+        data: {
+          id: 'uuid-1234',
+          title: 'Haircut',
+          description: 'Professional haircut service',
+          duration: 30,
+          price: 25.5,
+          isActive: true,
+          createdAt: '2026-07-12T10:30:00Z',
+          updatedAt: '2026-07-12T10:30:00Z',
+        },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Service with this title already exists.',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Bad Request.', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.', type: ErrorResponseDto })
+  @ApiForbiddenResponse({ description: 'Forbidden resource.', type: ErrorResponseDto })
+  async createService(
+    @Body() createDto: CreateServiceDto,
+  ): Promise<{ success: boolean; message: string; data: ServiceResponseDto }> {
     const service = await this.servicesService.createService(createDto);
     return {
       success: true,
@@ -34,24 +84,67 @@ export class ServicesController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'Retrieve paginated list of services (Public)' })
-  @ApiResponse({ status: 200, description: 'Services retrieved successfully.' })
-  async getServices(@Query() query: ServiceQueryDto) {
+  @ApiOkResponse({
+    description: 'Services retrieved successfully.',
+    schema: {
+      example: {
+        success: true,
+        data: [
+          {
+            id: 'uuid-1234',
+            title: 'Haircut',
+            description: 'Professional haircut service',
+            duration: 30,
+            price: 25.5,
+            isActive: true,
+          },
+        ],
+        meta: {
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Bad Request.', type: ErrorResponseDto })
+  async getServices(@Query() query: ServiceQueryDto): Promise<{
+    success: boolean;
+    data: ServiceResponseDto[];
+    meta: PaginationMeta;
+  }> {
     const result = await this.servicesService.getServices(query);
     return {
       success: true,
-      data: {
-        items: result.data,
-        pagination: result.pagination,
-      },
+      data: result.data,
+      meta: result.meta,
     };
   }
 
   @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Retrieve a service by ID (Public)' })
-  @ApiResponse({ status: 200, description: 'Service retrieved successfully.' })
-  @ApiResponse({ status: 404, description: 'Service not found.' })
-  async getService(@Param('id') id: string) {
+  @ApiOkResponse({
+    description: 'Service retrieved successfully.',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: 'uuid-1234',
+          title: 'Haircut',
+          description: 'Professional haircut service',
+          duration: 30,
+          price: 25.5,
+          isActive: true,
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Service not found.', type: ErrorResponseDto })
+  async getService(
+    @Param('id') id: string,
+  ): Promise<{ success: boolean; data: ServiceResponseDto }> {
     const service = await this.servicesService.getService(id);
     return {
       success: true,
@@ -60,14 +153,36 @@ export class ServicesController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STAFF)
   @ApiOperation({ summary: 'Update a service (ADMIN, STAFF)' })
-  @ApiResponse({ status: 200, description: 'Service updated successfully.' })
-  @ApiResponse({ status: 404, description: 'Service not found.' })
-  @ApiResponse({ status: 409, description: 'Duplicate title conflict.' })
-  async updateService(@Param('id') id: string, @Body() updateDto: UpdateServiceDto) {
+  @ApiOkResponse({
+    description: 'Service updated successfully.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Service updated successfully.',
+        data: {
+          id: 'uuid-1234',
+          title: 'Updated Haircut',
+          description: 'Updated professional haircut service',
+          duration: 45,
+          price: 30.0,
+          isActive: true,
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Service not found.', type: ErrorResponseDto })
+  @ApiConflictResponse({ description: 'Duplicate title conflict.', type: ErrorResponseDto })
+  @ApiBadRequestResponse({ description: 'Bad Request.', type: ErrorResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.', type: ErrorResponseDto })
+  @ApiForbiddenResponse({ description: 'Forbidden resource.', type: ErrorResponseDto })
+  async updateService(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateServiceDto,
+  ): Promise<{ success: boolean; message: string; data: ServiceResponseDto }> {
     const updatedService = await this.servicesService.updateService(id, updateDto);
     return {
       success: true,
@@ -77,14 +192,27 @@ export class ServicesController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
+  @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Delete a service (ADMIN only)' })
-  @ApiResponse({ status: 200, description: 'Service deleted successfully.' })
-  @ApiResponse({ status: 404, description: 'Service not found.' })
-  @ApiResponse({ status: 409, description: 'Cannot delete service due to existing bookings.' })
-  async deleteService(@Param('id') id: string) {
+  @ApiOkResponse({
+    description: 'Service deleted successfully.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Service deleted successfully.',
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Service not found.', type: ErrorResponseDto })
+  @ApiConflictResponse({
+    description: 'Cannot delete service due to existing bookings.',
+    type: ErrorResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.', type: ErrorResponseDto })
+  @ApiForbiddenResponse({ description: 'Forbidden resource.', type: ErrorResponseDto })
+  async deleteService(@Param('id') id: string): Promise<{ success: boolean; message: string }> {
     await this.servicesService.deleteService(id);
     return {
       success: true,

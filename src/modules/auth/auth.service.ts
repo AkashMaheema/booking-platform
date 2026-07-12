@@ -1,12 +1,8 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import { AuthRepository } from './auth.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,9 +24,7 @@ export class AuthService {
    * Registers a new user. Hashes password and ensures email is unique.
    */
   async register(registerDto: RegisterDto): Promise<Omit<User, 'password'>> {
-    const existingUser = await this.authRepository.findUserByEmail(
-      registerDto.email,
-    );
+    const existingUser = await this.authRepository.findUserByEmail(registerDto.email);
 
     if (existingUser) {
       throw new ConflictException('User already exists.');
@@ -52,6 +46,7 @@ export class AuthService {
       details: { email: user.email },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -59,9 +54,7 @@ export class AuthService {
   /**
    * Authenticates a user and returns Access/Refresh tokens.
    */
-  async login(
-    loginDto: LoginDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  async login(loginDto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
     const user = await this.authRepository.findUserByEmail(loginDto.email);
 
     if (!user) {
@@ -69,10 +62,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password.');
@@ -101,8 +91,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const hashedTokenString = this.hashToken(rawRefreshToken);
 
-    const existingToken =
-      await this.authRepository.findRefreshToken(hashedTokenString);
+    const existingToken = await this.authRepository.findRefreshToken(hashedTokenString);
 
     if (!existingToken || existingToken.isRevoked) {
       this.logger.warn(`Attempt to use invalid/revoked refresh token for user ${userId}`);
@@ -119,7 +108,7 @@ export class AuthService {
     }
 
     const user = await this.authRepository.findUserById(userId);
-    if (!user || !user.isActive) {
+    if (!user?.isActive) {
       throw new UnauthorizedException('User is inactive or does not exist.');
     }
 
@@ -139,9 +128,7 @@ export class AuthService {
   /**
    * Internal helper to generate and store tokens.
    */
-  private async generateTokens(
-    user: User,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  private async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -151,23 +138,21 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     const refreshSecret = this.configService.get<string>('REFRESH_SECRET');
-    const refreshExpiresIn =
-      this.configService.get<string>('REFRESH_EXPIRES_IN') || '7d';
+    const refreshExpiresIn = this.configService.get<string>('REFRESH_EXPIRES_IN') ?? '7d';
 
     const rawRefreshToken = this.jwtService.sign(payload, {
       secret: refreshSecret,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
       expiresIn: refreshExpiresIn as any,
     });
 
     const hashedRefreshToken = this.hashToken(rawRefreshToken);
-    const decodedRefresh = this.jwtService.decode(rawRefreshToken) as any;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const decodedRefresh = this.jwtService.decode(rawRefreshToken);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const expiresAt = new Date(decodedRefresh.exp * 1000);
 
-    await this.authRepository.saveRefreshToken(
-      user.id,
-      hashedRefreshToken,
-      expiresAt,
-    );
+    await this.authRepository.saveRefreshToken(user.id, hashedRefreshToken, expiresAt);
 
     return {
       accessToken,
@@ -177,9 +162,10 @@ export class AuthService {
 
   /**
    * Securely hashes a token (e.g. Refresh Token) using SHA-256 for fast/secure DB lookup.
+   * This is intentionally NOT bcrypt — refresh tokens are already random/high-entropy JWTs,
+   * so a fast cryptographic hash is sufficient and avoids unnecessary bcrypt overhead.
    */
   private hashToken(token: string): string {
-    const crypto = require('crypto');
-    return crypto.createHash('sha256').update(token).digest('hex');
+    return createHash('sha256').update(token).digest('hex');
   }
 }

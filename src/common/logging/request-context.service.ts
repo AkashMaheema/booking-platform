@@ -5,14 +5,14 @@ export interface RequestContext {
   requestId: string;
   userId?: string;
   correlationId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 @Injectable()
 export class RequestContextService {
   private static readonly storage = new AsyncLocalStorage<RequestContext>();
 
-  static run(context: RequestContext, callback: () => void) {
+  static run(context: RequestContext, callback: () => void): void {
     this.storage.run(context, callback);
   }
 

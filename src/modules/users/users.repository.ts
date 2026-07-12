@@ -48,7 +48,15 @@ export class UsersRepository {
   }
 
   async findAll(query: UserQueryDto): Promise<{ data: User[]; total: number }> {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', role, isActive } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      role,
+      isActive,
+    } = query;
     const skip = (page - 1) * limit;
     const take = limit;
 

@@ -4,11 +4,11 @@ import {
   Inject,
   Injectable,
   NestInterceptor,
+  LoggerService,
 } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { LoggerService, Request } from '@nestjs/common';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
@@ -28,10 +28,7 @@ export class LoggingInterceptor implements NestInterceptor {
         const res = context.switchToHttp().getResponse<{ statusCode: number }>();
         const statusCode = res.statusCode;
         const duration = Date.now() - now;
-        this.logger.log(
-          `${method} ${url} ${statusCode} ${duration}ms`,
-          'HTTP',
-        );
+        this.logger.log(`${method} ${url} ${statusCode} ${duration}ms`, 'HTTP');
       }),
     );
   }

@@ -1,9 +1,10 @@
+import { LoggerService } from '@nestjs/common';
 import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 
-export const createWinstonLogger = () =>
+export const createWinstonLogger = (): LoggerService =>
   WinstonModule.createLogger({
     transports: [
       new winston.transports.Console({
@@ -27,17 +28,11 @@ export const createWinstonLogger = () =>
             new winston.transports.File({
               filename: 'logs/error.log',
               level: 'error',
-              format: winston.format.combine(
-                winston.format.timestamp(),
-                winston.format.json(),
-              ),
+              format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
             }),
             new winston.transports.File({
               filename: 'logs/combined.log',
-              format: winston.format.combine(
-                winston.format.timestamp(),
-                winston.format.json(),
-              ),
+              format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
             }),
           ]
         : []),

@@ -1,58 +1,84 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Booking, BookingStatus } from '@prisma/client';
+import { Prisma, Booking, BookingStatus, Service } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { BookingQueryDto } from './dto/booking-query.dto';
+import { calcSkip } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class BookingsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Prisma.BookingCreateInput): Promise<Booking> {
-    // using $transaction for future-proofing as per rules
+  async create(
+    data: Prisma.BookingCreateInput,
+  ): Promise<Booking & { service: Pick<Service, 'id' | 'title' | 'duration' | 'price'> }> {
     return this.prisma.$transaction(async (tx) => {
       return tx.booking.create({
         data,
-        include: { service: true },
+        include: { service: { select: { id: true, title: true, duration: true, price: true } } },
       });
     });
   }
 
-  async findById(id: string): Promise<(Booking & { service: any }) | null> {
+  async findById(
+    id: string,
+  ): Promise<(Booking & { service: Pick<Service, 'id' | 'title' | 'duration' | 'price'> }) | null> {
     return this.prisma.booking.findUnique({
       where: { id },
-      include: { service: true },
+      include: { service: { select: { id: true, title: true, duration: true, price: true } } },
     });
   }
 
-  async updateStatus(id: string, status: BookingStatus): Promise<Booking> {
+  async updateStatus(
+    id: string,
+    status: BookingStatus,
+  ): Promise<Booking & { service: Pick<Service, 'id' | 'title' | 'duration' | 'price'> }> {
     return this.prisma.booking.update({
       where: { id },
       data: { status },
-      include: { service: true },
+      include: { service: { select: { id: true, title: true, duration: true, price: true } } },
     });
   }
 
-  async cancel(id: string): Promise<Booking> {
+  async cancel(
+    id: string,
+  ): Promise<Booking & { service: Pick<Service, 'id' | 'title' | 'duration' | 'price'> }> {
     return this.updateStatus(id, BookingStatus.CANCELLED);
   }
 
-  async findDuplicateBooking(serviceId: string, bookingDate: Date, bookingTime: string): Promise<Booking | null> {
+  async findDuplicateBooking(
+    serviceId: string,
+    bookingDate: Date,
+    bookingTime: string,
+  ): Promise<Booking | null> {
     return this.prisma.booking.findFirst({
       where: {
         serviceId,
         bookingDate,
         bookingTime,
-        status: {
-          not: BookingStatus.CANCELLED, // Cancelled bookings don't block new ones usually, but let's be strict or let the service decide. Actually, if it's unique in Prisma, it blocks it anyway. The Prisma schema has `@@unique([serviceId, bookingDate, bookingTime])`. We will just check existence.
-        }
+        status: { not: BookingStatus.CANCELLED },
       },
     });
   }
 
-  async findAll(query: BookingQueryDto): Promise<{ data: any[]; total: number }> {
-    const { page = 1, limit = 10, search, sortBy = 'bookingDate', sortOrder = 'asc', status, serviceId, bookingDate } = query;
-    const skip = (page - 1) * limit;
-    const take = limit;
+  async findAll(
+    query: BookingQueryDto,
+  ): Promise<{
+    data: (Booking & { service: Pick<Service, 'id' | 'title' | 'duration' | 'price'> })[];
+    total: number;
+  }> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'bookingDate',
+      order = 'asc',
+      status,
+      serviceId,
+      bookingDate,
+    } = query;
+
+    const skip = calcSkip(page, limit);
+    const take = Math.min(limit, 100);
 
     const where: Prisma.BookingWhereInput = {};
 
@@ -73,11 +99,14 @@ export class BookingsRepository {
     }
 
     if (bookingDate) {
-      where.bookingDate = new Date(bookingDate);
+      // Filter to the entire day: from midnight to end-of-day (UTC)
+      const start = new Date(`${bookingDate}T00:00:00.000Z`);
+      const end = new Date(`${bookingDate}T23:59:59.999Z`);
+      where.bookingDate = { gte: start, lte: end };
     }
 
     const orderBy: Prisma.BookingOrderByWithRelationInput = {
-      [sortBy]: sortOrder,
+      [sortBy]: order,
     };
 
     const [data, total] = await this.prisma.$transaction([
@@ -86,7 +115,7 @@ export class BookingsRepository {
         skip,
         take,
         orderBy,
-        include: { service: true },
+        include: { service: { select: { id: true, title: true, duration: true, price: true } } },
       }),
       this.prisma.booking.count({ where }),
     ]);

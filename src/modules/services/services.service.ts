@@ -6,6 +6,7 @@ import { ServiceQueryDto } from './dto/service-query.dto';
 import { ServiceResponseDto } from './dto/service-response.dto';
 import { Prisma } from '@prisma/client';
 import { AuditService, AuditAction } from '../../common/logging/audit.service';
+import { buildPaginationMeta, PaginatedResult } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class ServicesService {
@@ -43,22 +44,14 @@ export class ServicesService {
     return new ServiceResponseDto(newService);
   }
 
-  async getServices(query: ServiceQueryDto): Promise<{ data: ServiceResponseDto[]; pagination: any }> {
+  async getServices(query: ServiceQueryDto): Promise<PaginatedResult<ServiceResponseDto>> {
     const { data, total } = await this.servicesRepository.findAll(query);
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const totalPages = Math.ceil(total / limit);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
 
     return {
       data: data.map((service) => new ServiceResponseDto(service)),
-      pagination: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrevious: page > 1,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 
@@ -83,10 +76,7 @@ export class ServicesService {
       }
     }
 
-    const updateData: Prisma.ServiceUpdateInput = {
-      ...dto,
-    };
-
+    const updateData: Prisma.ServiceUpdateInput = { ...dto };
     const updatedService = await this.servicesRepository.update(id, updateData);
     this.logger.log(`Updated service with id ${updatedService.id}`);
 

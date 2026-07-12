@@ -6,7 +6,12 @@ export class ServiceResponseDto {
   id!: string;
   @ApiProperty({ example: 'Haircut', description: 'The title of the service' })
   title!: string;
-  @ApiProperty({ example: 'Professional haircut', description: 'Service description', required: false, nullable: true })
+  @ApiProperty({
+    example: 'Professional haircut',
+    description: 'Service description',
+    required: false,
+    nullable: true,
+  })
   description!: string | null;
   @ApiProperty({ example: 30, description: 'Duration in minutes' })
   duration!: number;

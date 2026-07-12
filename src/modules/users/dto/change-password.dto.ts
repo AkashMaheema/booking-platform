@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { IsPassword } from '../../../common/validators/is-password.validator';
 
 export class ChangePasswordDto {

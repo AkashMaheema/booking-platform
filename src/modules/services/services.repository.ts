@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, Service } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { ServiceQueryDto } from './dto/service-query.dto';
+import { calcSkip } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class ServicesRepository {
@@ -16,18 +17,13 @@ export class ServicesRepository {
   }
 
   async findByTitle(title: string): Promise<Service | null> {
-    // using findFirst because title might not have a strict unique constraint in Prisma yet, 
-    // but business rule requires it. If it is unique, findUnique is better.
     return this.prisma.service.findFirst({
       where: { title: { equals: title, mode: 'insensitive' } },
     });
   }
 
   async update(id: string, data: Prisma.ServiceUpdateInput): Promise<Service> {
-    return this.prisma.service.update({
-      where: { id },
-      data,
-    });
+    return this.prisma.service.update({ where: { id }, data });
   }
 
   async delete(id: string): Promise<Service> {
@@ -35,24 +31,21 @@ export class ServicesRepository {
   }
 
   async checkBookingsExist(serviceId: string): Promise<boolean> {
-    // Note: Once the Booking model is implemented, this should count related bookings.
-    // Assuming a relation named `bookings` will be created later.
-    // For now, we simulate false or gracefully handle if the relation doesn't exist yet.
     try {
-      const count = await (this.prisma as any).booking?.count({
+      const count = await this.prisma.booking.count({
         where: { serviceId },
       });
-      return count !== undefined && count > 0;
-    } catch (e) {
-      // Fallback if booking model is not yet synced in Prisma
+      return count > 0;
+    } catch {
       return false;
     }
   }
 
   async findAll(query: ServiceQueryDto): Promise<{ data: Service[]; total: number }> {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', isActive } = query;
-    const skip = (page - 1) * limit;
-    const take = limit;
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', order = 'desc', isActive } = query;
+
+    const skip = calcSkip(page, limit);
+    const take = Math.min(limit, 100);
 
     const where: Prisma.ServiceWhereInput = {};
 
@@ -68,16 +61,11 @@ export class ServicesRepository {
     }
 
     const orderBy: Prisma.ServiceOrderByWithRelationInput = {
-      [sortBy]: sortOrder,
+      [sortBy]: order,
     };
 
     const [data, total] = await this.prisma.$transaction([
-      this.prisma.service.findMany({
-        where,
-        skip,
-        take,
-        orderBy,
-      }),
+      this.prisma.service.findMany({ where, skip, take, orderBy }),
       this.prisma.service.count({ where }),
     ]);
 

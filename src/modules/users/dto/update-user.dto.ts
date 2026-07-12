@@ -8,7 +8,7 @@ export class UpdateUserDto {
     description: 'The full name of the user',
   })
   @IsString()
-  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)

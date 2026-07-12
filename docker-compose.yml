@@ -10,8 +10,6 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: booking_platform
       POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,35 +22,32 @@ services:
       - booking_network
 
   # ─── NestJS Application ───────────────────────────────────────────────────
-  app:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
-    container_name: booking_platform_app
+      target: production
+    container_name: booking_platform_api
     restart: unless-stopped
     environment:
       PORT: 3000
-      NODE_ENV: development
+      NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/booking_platform
-      # Note: app container connects to postgres service directly via Docker network (port 5432 internally)
+      # Note: api container connects to postgres service directly via Docker network (port 5432 internally)
       JWT_SECRET: dev-jwt-secret-minimum-32-characters-long
       JWT_EXPIRES_IN: 15m
       REFRESH_SECRET: dev-refresh-secret-minimum-32-characters-long
       REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:3000
       THROTTLE_TTL: 60
       THROTTLE_LIMIT: 100
     ports:
       - '3000:3000'
-    volumes:
-      - .:/app
-      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - booking_network
-    command: npm run start:dev
 
 # ─── Volumes ──────────────────────────────────────────────────────────────────
 volumes:

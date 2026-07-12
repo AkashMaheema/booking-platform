@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { IsPhone } from '../../../common/validators/is-phone.validator';
 import { IsTime } from '../../../common/validators/is-time.validator';
@@ -10,7 +19,7 @@ export class CreateBookingDto {
     description: 'The full name of the customer',
   })
   @IsString()
-  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
@@ -21,7 +30,9 @@ export class CreateBookingDto {
     description: 'The email of the customer',
   })
   @IsEmail()
-  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim().toLowerCase() : value)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsNotEmpty()
   customerEmail!: string;
 
@@ -68,7 +79,7 @@ export class CreateBookingDto {
   })
   @IsOptional()
   @IsString()
-  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @MaxLength(1000)
   notes?: string;
 }

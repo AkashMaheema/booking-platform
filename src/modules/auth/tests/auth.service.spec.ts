@@ -14,7 +14,6 @@ describe('AuthService', () => {
   let service: AuthService;
   let authRepository: AuthRepository;
   let jwtService: JwtService;
-  let configService: ConfigService;
 
   const mockUser = {
     id: 'user-id-123',
@@ -76,7 +75,6 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     authRepository = module.get<AuthRepository>(AuthRepository);
     jwtService = module.get<JwtService>(JwtService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -125,7 +123,9 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if user inactive', async () => {
-      jest.spyOn(authRepository, 'findUserByEmail').mockResolvedValue({ ...mockUser, isActive: false } as any);
+      jest
+        .spyOn(authRepository, 'findUserByEmail')
+        .mockResolvedValue({ ...mockUser, isActive: false } as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
@@ -157,10 +157,16 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if token not found or revoked', async () => {
       jest.spyOn(authRepository, 'findRefreshToken').mockResolvedValue(null);
-      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
 
-      jest.spyOn(authRepository, 'findRefreshToken').mockResolvedValue({ ...existingToken, isRevoked: true });
-      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(UnauthorizedException);
+      jest
+        .spyOn(authRepository, 'findRefreshToken')
+        .mockResolvedValue({ ...existingToken, isRevoked: true });
+      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw UnauthorizedException if token expired', async () => {
@@ -169,7 +175,9 @@ describe('AuthService', () => {
         expiresAt: new Date(Date.now() - 10000), // past
       });
 
-      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshTokens(userId, rawRefreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(authRepository.deleteRefreshToken).toHaveBeenCalled();
     });
 

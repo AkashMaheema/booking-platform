@@ -22,12 +22,14 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "seed": "prisma db seed",
+    "seed:reset": "prisma migrate reset --force",
     "prepare": "husky"
   },
   "prisma": {
@@ -78,6 +80,7 @@
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^7.0.0",
     "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -85,7 +88,6 @@
     "husky": "^9.1.7",
     "jest": "^30.0.0",
     "lint-staged": "^15.5.1",
-    "openapi-to-postmanv2": "^6.3.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
@@ -114,7 +116,13 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "modules/**/*.(t|j)s",
+      "common/**/*.(t|j)s"
+    ],
+    "coveragePathIgnorePatterns": [
+      ".*\\.module\\.ts$",
+      ".*\\.dto\\.ts$",
+      ".*\\.entity\\.ts$"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",

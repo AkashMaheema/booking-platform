@@ -20,14 +20,14 @@ export interface AuditLog {
   action: AuditAction;
   resource: string;
   resourceId?: string;
-  details?: any;
+  details?: unknown;
 }
 
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger('AuditService');
 
-  log(auditData: AuditLog) {
+  log(auditData: AuditLog): void {
     const requestId = RequestContextService.get('requestId');
     const userId = RequestContextService.get('userId');
 

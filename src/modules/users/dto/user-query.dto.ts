@@ -5,14 +5,17 @@ import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { Role } from '@prisma/client';
 
 export class UserQueryDto extends PaginationQueryDto {
-
   @ApiPropertyOptional({ description: 'Search term for name or email' })
   @IsOptional()
   @IsString()
-  @Transform(({ value }: { value: any }) => typeof value === 'string' ? value.trim() : value)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Sort by field', enum: ['createdAt', 'name', 'email'], default: 'createdAt' })
+  @ApiPropertyOptional({
+    description: 'Sort by field',
+    enum: ['createdAt', 'name', 'email'],
+    default: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['createdAt', 'name', 'email'])

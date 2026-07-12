@@ -104,15 +104,21 @@ describe('ServicesService', () => {
 
     it('should throw ConflictException if new title already exists', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockService as any);
-      jest.spyOn(repository, 'findByTitle').mockResolvedValue({ id: 'service-2', title: 'New Title' } as any);
+      jest
+        .spyOn(repository, 'findByTitle')
+        .mockResolvedValue({ id: 'service-2', title: 'New Title' } as any);
 
-      await expect(service.updateService('service-1', { title: 'New Title' })).rejects.toThrow(ConflictException);
+      await expect(service.updateService('service-1', { title: 'New Title' })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should successfully update the service', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockService as any);
       jest.spyOn(repository, 'findByTitle').mockResolvedValue(null);
-      jest.spyOn(repository, 'update').mockResolvedValue({ ...mockService, title: 'Updated Haircut' } as any);
+      jest
+        .spyOn(repository, 'update')
+        .mockResolvedValue({ ...mockService, title: 'Updated Haircut' } as any);
 
       const result = await service.updateService('service-1', { title: 'Updated Haircut' });
       expect(result.title).toBe('Updated Haircut');
@@ -143,12 +149,60 @@ describe('ServicesService', () => {
   });
 
   describe('getServices', () => {
-    it('should return paginated list', async () => {
+    it('should return paginated list with meta', async () => {
       jest.spyOn(repository, 'findAll').mockResolvedValue({ data: [mockService as any], total: 1 });
 
       const result = await service.getServices({ page: 1, limit: 10 });
       expect(result.data.length).toBe(1);
-      expect(result.pagination.totalItems).toBe(1);
+      expect(result.meta.totalItems).toBe(1);
+      expect(result.meta.page).toBe(1);
+      expect(result.meta.limit).toBe(10);
+      expect(result.meta.totalPages).toBe(1);
+      expect(result.meta.hasNextPage).toBe(false);
+      expect(result.meta.hasPreviousPage).toBe(false);
+    });
+
+    it('should return empty data with zero meta when no records', async () => {
+      jest.spyOn(repository, 'findAll').mockResolvedValue({ data: [], total: 0 });
+
+      const result = await service.getServices({ page: 1, limit: 10 });
+      expect(result.data).toEqual([]);
+      expect(result.meta.totalItems).toBe(0);
+      expect(result.meta.totalPages).toBe(0);
+      expect(result.meta.hasNextPage).toBe(false);
+    });
+
+    it('should return correct hasNextPage on multi-page results', async () => {
+      jest
+        .spyOn(repository, 'findAll')
+        .mockResolvedValue({ data: [mockService as any], total: 45 });
+
+      const result = await service.getServices({ page: 1, limit: 10 });
+      expect(result.meta.totalPages).toBe(5);
+      expect(result.meta.hasNextPage).toBe(true);
+      expect(result.meta.hasPreviousPage).toBe(false);
+    });
+
+    it('should pass search and isActive filter through to repository', async () => {
+      const findAllSpy = jest
+        .spyOn(repository, 'findAll')
+        .mockResolvedValue({ data: [], total: 0 });
+
+      await service.getServices({ page: 1, limit: 10, search: 'hair', isActive: true });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'hair', isActive: true }),
+      );
+    });
+
+    it('should pass sortBy and order filter through to repository', async () => {
+      const findAllSpy = jest
+        .spyOn(repository, 'findAll')
+        .mockResolvedValue({ data: [], total: 0 });
+
+      await service.getServices({ page: 1, limit: 10, sortBy: 'price', order: 'asc' });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ sortBy: 'price', order: 'asc' }),
+      );
     });
   });
 });

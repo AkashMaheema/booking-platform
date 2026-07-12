@@ -13,7 +13,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(context: ExecutionContext) {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -23,13 +23,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
 
-    return super.canActivate(context);
+    return super.canActivate(context) as boolean | Promise<boolean>;
   }
 
-  handleRequest(err: any, user: any, info: any) {
-    // You can throw an exception based on either "info" or "err" arguments
+  handleRequest<TUser = unknown>(err: Error | null, user: TUser, _info: unknown): TUser {
     if (err || !user) {
-      throw err || new UnauthorizedException();
+      throw err ?? new UnauthorizedException();
     }
     return user;
   }

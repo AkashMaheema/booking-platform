@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { WinstonModule } from 'nest-winston';
+import { WinstonModule, utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import * as winston from 'winston';
-import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
 
 @Global()
 @Module({
@@ -10,11 +9,7 @@ import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
       useFactory: () => {
         const isProduction = process.env['NODE_ENV'] === 'production';
         const defaultLogLevel = isProduction ? 'info' : 'debug';
-        const logLevel = process.env['LOG_LEVEL']?.toLowerCase() || defaultLogLevel;
-
-        const auditFilter = winston.format((info) => {
-          return info.context === 'AuditService' ? info : false;
-        });
+        const logLevel = process.env['LOG_LEVEL']?.toLowerCase() ?? defaultLogLevel;
 
         return {
           level: logLevel,
@@ -29,43 +24,12 @@ import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
                 : winston.format.combine(
                     winston.format.timestamp(),
                     winston.format.ms(),
-                    nestWinstonModuleUtilities.format.nestLike(
-                      'BookingPlatform',
-                      {
-                        colors: true,
-                        prettyPrint: true,
-                      },
-                    ),
+                    nestWinstonModuleUtilities.format.nestLike('BookingPlatform', {
+                      colors: true,
+                      prettyPrint: true,
+                    }),
                   ),
             }),
-            ...(isProduction
-              ? [
-                  new winston.transports.File({
-                    filename: 'logs/error.log',
-                    level: 'error',
-                    format: winston.format.combine(
-                      winston.format.timestamp(),
-                      winston.format.json(),
-                    ),
-                  }),
-                  new winston.transports.File({
-                    filename: 'logs/combined.log',
-                    format: winston.format.combine(
-                      winston.format.timestamp(),
-                      winston.format.json(),
-                    ),
-                  }),
-                  new winston.transports.File({
-                    filename: 'logs/audit.log',
-                    level: 'info',
-                    format: winston.format.combine(
-                      auditFilter(),
-                      winston.format.timestamp(),
-                      winston.format.json(),
-                    ),
-                  }),
-                ]
-              : []),
           ],
         };
       },

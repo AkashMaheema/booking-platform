@@ -25,11 +25,12 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
    * We pass the payload and the raw token to the request so the controller/service
    * can verify the hash in the database.
    */
-  async validate(
+  validate(
     req: Request,
     payload: { sub: string; email: string; role: string },
-  ) {
-    const refreshToken = req.body.refreshToken;
+  ): Record<string, unknown> {
+    const body = req.body as Record<string, string>;
+    const refreshToken = body['refreshToken'];
 
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is missing');

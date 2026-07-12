@@ -73,15 +73,17 @@ describe('UsersService', () => {
   describe('updateProfile', () => {
     it('should throw NotFoundException if user not found', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(null);
-      await expect(service.updateProfile('123', { name: 'New Name' })).rejects.toThrow(NotFoundException);
+      await expect(service.updateProfile('123', { name: 'New Name' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should update user and return safe response', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockUser);
       jest.spyOn(repository, 'update').mockResolvedValue({ ...mockUser, name: 'New Name' });
-      
+
       const result = await service.updateProfile('123', { name: 'New Name' });
-      
+
       expect(result.name).toBe('New Name');
       expect(repository.update).toHaveBeenCalledWith('123', { name: 'New Name' });
     });
@@ -95,8 +97,9 @@ describe('UsersService', () => {
     };
 
     it('should throw BadRequestException if passwords do not match', async () => {
-      await expect(service.changePassword('123', { ...dto, confirmPassword: 'different' }))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.changePassword('123', { ...dto, confirmPassword: 'different' }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw UnauthorizedException if current password is wrong', async () => {
@@ -108,7 +111,7 @@ describe('UsersService', () => {
 
     it('should throw BadRequestException if new password equals old password', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockImplementation(async (a, b) => true); // Both current validation and reused check returns true
+      (bcrypt.compare as jest.Mock).mockImplementation(async (_a, _b) => true); // Both current validation and reused check returns true
 
       await expect(service.changePassword('123', dto)).rejects.toThrow(BadRequestException);
     });
@@ -116,7 +119,9 @@ describe('UsersService', () => {
     it('should hash new password, save it, and revoke tokens', async () => {
       jest.spyOn(repository, 'findById').mockResolvedValue(mockUser);
       // first call (validate current) returns true, second call (reused check) returns false
-      (bcrypt.compare as jest.Mock).mockImplementation(async (pwd, hash) => pwd === dto.currentPassword);
+      (bcrypt.compare as jest.Mock).mockImplementation(
+        async (pwd, _hash) => pwd === dto.currentPassword,
+      );
       (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
 
       await service.changePassword('123', dto);

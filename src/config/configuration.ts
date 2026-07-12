@@ -1,4 +1,4 @@
-export default () => ({
+export default (): Record<string, unknown> => ({
   app: {
     port: parseInt(process.env['PORT'] ?? '3000', 10),
     nodeEnv: process.env['NODE_ENV'] ?? 'development',
@@ -14,6 +14,9 @@ export default () => ({
   refresh: {
     secret: process.env['REFRESH_SECRET'],
     expiresIn: process.env['REFRESH_EXPIRES_IN'] ?? '7d',
+  },
+  cors: {
+    origin: process.env['CORS_ORIGIN'] ?? 'http://localhost:3000',
   },
   throttle: {
     ttl: parseInt(process.env['THROTTLE_TTL'] ?? '60', 10),

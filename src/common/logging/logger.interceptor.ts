@@ -1,10 +1,4 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  NestInterceptor,
-  Logger,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { RequestWithId } from '../middleware/request-id.middleware';
@@ -15,16 +9,16 @@ import { RequestContextService } from './request-context.service';
 export class LoggerInterceptor implements NestInterceptor {
   private readonly logger = new Logger(LoggerInterceptor.name);
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const ctx = context.switchToHttp();
-    const request = ctx.getRequest<RequestWithId & { user?: any }>();
+    const request = ctx.getRequest<RequestWithId & { user?: { id?: string } }>();
     const response = ctx.getResponse<Response>();
 
     const method = request.method;
     const url = request.url;
     const now = Date.now();
     const requestId = request.id;
-    
+
     // Update userId in context if available (from AuthGuard)
     if (request.user?.id) {
       RequestContextService.set('userId', request.user.id);
@@ -71,7 +65,7 @@ export class LoggerInterceptor implements NestInterceptor {
             this.logger.log(logData);
           }
         },
-        error: (error) => {
+        error: (error: Error) => {
           const duration = Date.now() - now;
           this.logger.error({
             message: `Request Failed: ${method} ${url} - ${duration}ms`,
@@ -87,11 +81,18 @@ export class LoggerInterceptor implements NestInterceptor {
     );
   }
 
-  private maskSensitiveData(body: any): any {
+  private maskSensitiveData(body: unknown): unknown {
     if (!body || typeof body !== 'object') return body;
 
-    const maskedBody = { ...body };
-    const sensitiveKeys = ['password', 'token', 'accessToken', 'refreshToken', 'authorization', 'secret'];
+    const maskedBody = { ...(body as Record<string, unknown>) };
+    const sensitiveKeys = [
+      'password',
+      'token',
+      'accessToken',
+      'refreshToken',
+      'authorization',
+      'secret',
+    ];
 
     for (const key of Object.keys(maskedBody)) {
       if (sensitiveKeys.includes(key.toLowerCase())) {

@@ -73,7 +73,7 @@ describe('Logging & Audit Module', () => {
             body: { password: 'secretpassword', normalField: 'value' },
             ip: '127.0.0.1',
             headers: { 'user-agent': 'test-agent' },
-            user: { id: 'u-1' }
+            user: { id: 'u-1' },
           }),
           getResponse: jest.fn().mockReturnValue({
             statusCode: 201,
@@ -95,7 +95,7 @@ describe('Logging & Audit Module', () => {
               body: { password: '***MASKED***', normalField: 'value' },
             }),
           );
-          
+
           expect((interceptor as any).logger.log).toHaveBeenCalledWith(
             expect.objectContaining({
               statusCode: 201,
@@ -115,7 +115,7 @@ describe('Logging & Audit Module', () => {
 
       RequestContextService.run({ requestId: 'req-test' }, () => {
         interceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-          error: (err) => {
+          error: (_err) => {
             expect((interceptor as any).logger.error).toHaveBeenCalledWith(
               expect.objectContaining({
                 error: 'Test Error',

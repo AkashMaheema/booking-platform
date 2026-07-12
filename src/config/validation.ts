@@ -10,6 +10,7 @@ export const validationSchema = Joi.object({
   JWT_EXPIRES_IN: Joi.string().required(),
   REFRESH_SECRET: Joi.string().min(32).required(),
   REFRESH_EXPIRES_IN: Joi.string().required(),
+  CORS_ORIGIN: Joi.string().required(),
   THROTTLE_TTL: Joi.number().default(60),
   THROTTLE_LIMIT: Joi.number().default(100),
 });

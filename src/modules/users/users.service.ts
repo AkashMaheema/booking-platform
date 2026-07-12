@@ -1,11 +1,16 @@
-import { Injectable, Logger, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersRepository } from './users.repository';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { UserResponseDto } from './dto/user-response.dto';
-import { User } from '@prisma/client';
 import { AuditService, AuditAction } from '../../common/logging/audit.service';
 
 @Injectable()
@@ -34,7 +39,7 @@ export class UsersService {
     // Since DTO restricts modification to 'name', we can just pass it
     const updatedUser = await this.usersRepository.update(userId, updateDto);
     this.logger.log(`User ${userId} updated their profile`);
-    
+
     this.auditService.log({
       action: AuditAction.USER_UPDATED,
       resource: 'User',
@@ -69,10 +74,10 @@ export class UsersService {
     const hashedNewPassword = await bcrypt.hash(dto.newPassword, 12);
 
     await this.usersRepository.changePassword(userId, hashedNewPassword);
-    
+
     // Invalidate refresh tokens requiring re-login
     await this.usersRepository.deleteRefreshTokens(userId);
-    
+
     this.logger.log(`User ${userId} changed their password and refresh tokens were revoked`);
 
     this.auditService.log({
@@ -90,15 +95,17 @@ export class UsersService {
     return new UserResponseDto(user);
   }
 
-  async findUsers(query: UserQueryDto): Promise<{ data: UserResponseDto[]; meta: { total: number; page: number; limit: number } }> {
+  async findUsers(
+    query: UserQueryDto,
+  ): Promise<{ data: UserResponseDto[]; meta: { total: number; page: number; limit: number } }> {
     const { data, total } = await this.usersRepository.findAll(query);
-    
+
     return {
       data: data.map((user) => new UserResponseDto(user)),
       meta: {
         total,
-        page: query.page || 1,
-        limit: query.limit || 10,
+        page: query.page ?? 1,
+        limit: query.limit ?? 10,
       },
     };
   }

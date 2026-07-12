@@ -1,11 +1,5 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
-import { Request, Response } from 'express';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
+import { Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { RequestWithId } from '../middleware/request-id.middleware';
 

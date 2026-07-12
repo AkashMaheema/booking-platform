@@ -1,8 +1,13 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  ValidationPipe,
+  BadRequestException,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
@@ -23,6 +28,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { LoggingModule } from './common/logging/logging.module';
 import { RequestContextMiddleware } from './common/logging/request-context.middleware';
 import { LoggerInterceptor } from './common/logging/logger.interceptor';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 
 @Module({
   imports: [
@@ -81,16 +87,47 @@ import { LoggerInterceptor } from './common/logging/logger.interceptor';
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PerformanceInterceptor,
+    },
 
     // Global rate limiting guard
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+
+    // Global Validation Pipe
+    {
+      provide: APP_PIPE,
+      useFactory: (): ValidationPipe =>
+        new ValidationPipe({
+          transform: true,
+          whitelist: true,
+          forbidNonWhitelisted: true,
+          forbidUnknownValues: true,
+          transformOptions: {
+            enableImplicitConversion: false,
+          },
+          stopAtFirstError: false,
+          exceptionFactory: (errors): BadRequestException => {
+            const formattedErrors = errors.map((error) => ({
+              field: error.property,
+              message: Object.values(error.constraints ?? {}).join(', '),
+            }));
+            return new BadRequestException({
+              success: false,
+              message: 'Validation failed.',
+              errors: formattedErrors,
+            });
+          },
+        }),
+    },
   ],
 })
 export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
+  configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestIdMiddleware, RequestContextMiddleware).forRoutes('*');
   }
 }

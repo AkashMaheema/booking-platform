@@ -26,14 +26,19 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
    * Validates the decoded JWT payload.
    * Attaches the user object to the request.
    */
-  async validate(payload: { sub: string; email: string; role: string }) {
+  async validate(payload: {
+    sub: string;
+    email: string;
+    role: string;
+  }): Promise<Record<string, unknown>> {
     const user = await this.authRepository.findUserById(payload.sub);
 
-    if (!user || !user.isActive) {
+    if (!user?.isActive) {
       throw new UnauthorizedException('User is not active or does not exist');
     }
 
     // Do not leak password via request.user
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }

@@ -19,7 +19,8 @@ import { PrismaModule } from '../../database/prisma.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '15m') as any,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ?? '15m') as any,
         },
       }),
     }),

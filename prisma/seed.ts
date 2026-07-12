@@ -1,106 +1,128 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { usersData } from './data/users';
+import { servicesData } from './data/services';
+import { bookingsData } from './data/bookings';
 
-// Load .env explicitly for seed script execution
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error('DATABASE_URL is required for seeding.');
+  throw new Error('DATABASE_URL is not defined in the environment.');
 }
 
-const adapter = new PrismaPg({ connectionString });
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🌱 Starting database seeding...');
 
-  // 1. Seed Admin User (Idempotent via upsert)
-  const adminEmail = 'admin@example.com';
-  const plainPassword = 'Admin@123';
-  const hashedPassword = await bcrypt.hash(plainPassword, 10);
+  // 1. Seed Users
+  console.log('Creating users...');
+  for (const user of usersData) {
+    const hashedPassword = await bcrypt.hash(user.password, 12);
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        password: hashedPassword,
+        role: user.role as any,
+        isActive: user.isActive,
+      },
+      create: {
+        email: user.email,
+        name: user.name,
+        password: hashedPassword,
+        role: user.role as any,
+        isActive: user.isActive,
+      },
+    });
+  }
 
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
-      name: 'System Admin',
-      email: adminEmail,
-      password: hashedPassword,
-      role: 'ADMIN',
-      isActive: true,
-    },
-  });
-
-  console.log(`✅ Admin user seeded: ${admin.email}`);
-
-  // 2. Seed Sample Services (Idempotent via upsert based on title)
-  const services = [
-    {
-      title: 'Haircut',
-      description: 'Professional haircut and styling',
-      duration: 30,
-      price: 25.0,
-      isActive: true,
-    },
-    {
-      title: 'Massage',
-      description: 'Relaxing 60-minute full body massage',
-      duration: 60,
-      price: 80.0,
-      isActive: true,
-    },
-    {
-      title: 'Cleaning',
-      description: 'Deep home cleaning service',
-      duration: 120,
-      price: 150.0,
-      isActive: true,
-    },
-    {
-      title: 'Repair',
-      description: 'General home maintenance and repair',
-      duration: 45,
-      price: 60.0,
-      isActive: true,
-    },
-    {
-      title: 'Consultation',
-      description: 'One-on-one professional consultation',
-      duration: 60,
-      price: 100.0,
-      isActive: true,
-    },
-  ];
-
-  for (const service of services) {
-    // Note: title is not explicitly marked @unique in schema (only @index),
-    // but Prisma upsert requires a unique field. Wait, if title is not unique,
-    // we can use findFirst and create, or use the generated IDs.
-    // Let's use findFirst to check existence.
+  // 2. Seed Services
+  console.log('Creating services...');
+  for (const service of servicesData) {
     const existingService = await prisma.service.findFirst({
       where: { title: service.title },
     });
-
-    if (!existingService) {
-      await prisma.service.create({
-        data: service,
+    
+    if (existingService) {
+      await prisma.service.update({
+        where: { id: existingService.id },
+        data: {
+          description: service.description,
+          duration: service.duration,
+          price: service.price,
+          isActive: service.isActive,
+        },
       });
-      console.log(`✅ Service seeded: ${service.title}`);
     } else {
-      console.log(`⚡ Service already exists: ${service.title}`);
+      await prisma.service.create({
+        data: {
+          title: service.title,
+          description: service.description,
+          duration: service.duration,
+          price: service.price,
+          isActive: service.isActive,
+        },
+      });
     }
   }
 
-  console.log('✅ Seeding completed successfully.');
+  // 3. Seed Bookings
+  console.log('Creating bookings...');
+  for (const booking of bookingsData) {
+    // Find references
+    const service = await prisma.service.findFirst({ where: { title: booking.serviceTitle } });
+
+    if (!service) {
+      console.warn(`Skipping booking for ${booking.customerEmail} - ${booking.serviceTitle} (Service not found)`);
+      continue;
+    }
+
+    const bookingDate = new Date(booking.bookingDate);
+
+    // Prevent duplicate bookings for the same service, date, and time
+    const existingBooking = await prisma.booking.findFirst({
+      where: {
+        serviceId: service.id,
+        bookingDate: bookingDate,
+        bookingTime: booking.bookingTime,
+      },
+    });
+
+    if (!existingBooking) {
+      await prisma.booking.create({
+        data: {
+          customerName: booking.customerName,
+          customerEmail: booking.customerEmail,
+          customerPhone: booking.customerPhone,
+          serviceId: service.id,
+          bookingDate: bookingDate,
+          bookingTime: booking.bookingTime,
+          status: booking.status as any,
+        },
+      });
+    } else {
+      // Update status if it exists but might be out of sync
+      await prisma.booking.update({
+        where: { id: existingBooking.id },
+        data: { status: booking.status as any },
+      });
+    }
+  }
+
+  console.log('✅ Database seeded successfully.');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+    console.error('❌ Error during seeding:');
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

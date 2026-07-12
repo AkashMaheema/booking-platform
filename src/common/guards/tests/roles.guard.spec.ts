@@ -1,7 +1,6 @@
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from '../roles.guard';
-import { ROLES_KEY } from '../../decorators/roles.decorator';
 import { Role } from '@prisma/client';
 
 describe('RolesGuard', () => {
@@ -17,7 +16,7 @@ describe('RolesGuard', () => {
           user,
         }),
       }),
-    } as unknown as ExecutionContext);
+    }) as unknown as ExecutionContext;
 
   beforeEach(() => {
     reflector = new Reflector();
